@@ -27,11 +27,14 @@ invoice_df = spark.createDataFrame(invoice_records, ["invoice_id", "date_receive
 
 logger.info("Normalizing date types into ISO partition-compliant schema...")
 
-# FAILS HERE: Spark 3.x rejects uppercase YYYY without week-of-year context, throwing SparkUpgradeException
+# FIX: Replaced uppercase 'YYYY' (ISO week-based year) with lowercase 'yyyy' (Gregorian calendar year)
+# in both to_date() and date_format() calls. Spark 3.x DateTimeFormatter strictly rejects 'YYYY'
+# when paired with 'MM' and 'dd' fields without a week-of-year specifier, causing a
+# SparkUpgradeException (INCONSISTENT_BEHAVIOR_CROSS_VERSION.DATETIME_PATTERN_RECOGNITION).
 clean_invoices = invoice_df.withColumn(
     "normalized_date",
-    to_date(col("date_received"), "YYYY/MM/dd")
-).withColumn("fiscal_year", date_format(col("date_received"), "YYYY"))
+    to_date(col("date_received"), "yyyy/MM/dd")
+).withColumn("fiscal_year", date_format(col("date_received"), "yyyy"))
 
 logger.info("Displaying standardized invoice batch...")
 clean_invoices.show()
